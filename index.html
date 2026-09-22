@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="S0 Tracker">
+<title>Season 0 Tracker</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<style>
+:root{color-scheme:dark;--bg:#09090a;--card:#171719;--card2:#29292c;--text:#f7f7f8;--muted:#b6b6bb;--line:#3a3a40;--accent:#3475d3;--danger:#b74444;--ok:#69d396}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100vh}
+.app{max-width:760px;margin:auto;padding:calc(12px + env(safe-area-inset-top)) 12px calc(28px + env(safe-area-inset-bottom))}
+h1{font-size:22px;margin:0} h2{font-size:18px;margin:0}
+.sub,.tiny{color:var(--muted)} .sub{font-size:13px}.tiny{font-size:12px;line-height:1.4}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px}
+.save{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:8px 10px;background:var(--card);white-space:nowrap}
+.grid2,.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.metric{background:var(--card2);border-radius:14px;padding:14px}
+.metric .v{font-size:31px;font-weight:750;margin:5px 0}
+.card{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:13px;margin-bottom:12px}
+.row{display:flex;gap:9px;align-items:center}.grow{flex:1;min-width:0}
+.btn,.field{min-height:44px;border-radius:11px;border:1px solid var(--line);background:transparent;color:inherit;font:inherit}
+.btn{padding:10px 13px}.btn.primary{background:var(--accent);border-color:var(--accent);font-weight:700}.btn.danger{border-color:var(--danger)}
+.btn:disabled{opacity:.4}.field{width:100%;padding:9px 10px;font-size:16px}.full{width:100%}
+textarea.field{min-height:80px;resize:vertical}label{display:block;font-size:13px;color:var(--muted)}label .field{margin-top:5px}
+details{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:9px}summary{font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}.chip{min-height:42px;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:transparent;color:inherit}
+.sectionHead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:9px}
+.status{min-height:18px;margin-top:8px;color:var(--muted);font-size:13px}
+.table{width:100%;border-collapse:collapse;font-size:14px}.table td{padding:8px 2px;border-bottom:1px solid var(--line)}.table td:nth-child(2),.table td:nth-child(3){text-align:right;white-space:nowrap}
+.notice{background:var(--card2);border-radius:12px;padding:11px 12px;font-size:13px;line-height:1.5}
+.hidden{display:none!important}
+.piles{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.piles .field{text-align:center;padding-left:4px;padding-right:4px}
+.setupTitle{margin-bottom:8px}
+.good{color:var(--ok)}
+@media(max-width:520px){.app{padding-left:10px;padding-right:10px}.metric .v{font-size:28px}.grid2,.actions{gap:8px}.card{padding:12px}}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="top">
+    <div>
+      <h1>Season 0 Tracker</h1>
+      <div class="sub">June-safe • spoiler-free • autosaves on this device</div>
+    </div>
+    <div id="savePill" class="save">Not started</div>
+  </div>
+
+  <section id="setupView">
+    <div class="card">
+      <h2 class="setupTitle">Start / resume a game</h2>
+      <div class="tiny" style="margin-bottom:12px">Nothing is preloaded. Enter only what is true for your current game.</div>
+
+      <label>Turn order, comma-separated
+        <input id="setupPlayers" class="field" value="P1, P2, P3, P4">
+      </label>
+
+      <div class="grid2" style="margin-top:9px">
+        <label>Next player (1–4)
+          <input id="setupNextPlayer" class="field" type="number" inputmode="numeric" min="1" max="4" value="1">
+        </label>
+        <label>Threat cards / turn
+          <input id="setupThreatRate" class="field" type="number" inputmode="numeric" min="1" max="8" value="2">
+        </label>
+      </div>
+
+      <label style="margin-top:9px">5 Player-deck pile sizes, top → bottom (include each Escalation)
+        <div class="piles" style="margin-top:5px">
+          <input id="pile0" class="field" type="number" inputmode="numeric" min="1" placeholder="1">
+          <input id="pile1" class="field" type="number" inputmode="numeric" min="1" placeholder="2">
+          <input id="pile2" class="field" type="number" inputmode="numeric" min="1" placeholder="3">
+          <input id="pile3" class="field" type="number" inputmode="numeric" min="1" placeholder="4">
+          <input id="pile4" class="field" type="number" inputmode="numeric" min="1" placeholder="5">
+        </div>
+      </label>
+
+      <div class="grid2" style="margin-top:9px">
+        <label>Player cards already drawn
+          <input id="setupDrawn" class="field" type="number" inputmode="numeric" min="0" value="0">
+        </label>
+        <label>Escalations already drawn
+          <input id="setupEsc" class="field" type="number" inputmode="numeric" min="0" max="5" value="0">
+        </label>
+      </div>
+
+      <details>
+        <summary>Optional Threat-deck resume info</summary>
+        <label style="margin-top:9px">Current discard since last Escalation
+          <textarea id="setupDiscard" class="field" placeholder="City A, City B, City C"></textarea>
+        </label>
+        <label style="margin-top:9px">Current shuffled top group still undrawn
+          <textarea id="setupTop" class="field" placeholder="City D, City E, City F"></textarea>
+        </label>
+        <label style="margin-top:9px">Known exact top order, next card first
+          <textarea id="setupKnown" class="field" placeholder="Only if you know/reordered the exact top cards"></textarea>
+        </label>
+        <label style="margin-top:9px">Threat cards removed from the game
+          <textarea id="setupRemoved" class="field" placeholder="e.g. a city removed by a funded event"></textarea>
+        </label>
+      </details>
+
+      <button id="startBtn" type="button" class="btn primary full" style="margin-top:12px">Start tracker</button>
+      <div id="setupStatus" class="status" aria-live="polite"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:8px">Restore a previous save</h2>
+      <label>Import backup JSON
+        <input id="setupImport" class="field" type="file" accept="application/json,.json">
+      </label>
+      <div class="tiny" style="margin-top:8px">A recovery link from this app will also restore automatically when opened.</div>
+    </div>
+  </section>
+
+  <section id="gameView" class="hidden">
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="metric">
+        <div id="riskLabel" class="sub">Escalation this draw</div>
+        <div id="riskValue" class="v">—</div>
+        <div id="riskFoot" class="tiny"></div>
+      </div>
+      <div class="metric">
+        <div class="sub">Earliest Escalation</div>
+        <div id="soonValue" class="v">—</div>
+        <div id="soonFoot" class="tiny"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sectionHead">
+        <div class="grow">
+          <h2 id="turnTitle">—</h2>
+          <div id="pileLine" class="sub"></div>
+        </div>
+        <button id="undoBtn" class="btn" type="button">Undo</button>
+      </div>
+
+      <div class="actions">
+        <button id="normalBtn" class="btn" type="button">Normal Player card</button>
+        <button id="escalationBtn" class="btn primary" type="button">Escalation</button>
+      </div>
+
+      <div id="resolveBox" class="hidden" style="margin-top:10px">
+        <div class="tiny" style="margin-bottom:6px">Enter the bottom Threat city, then resolve the Escalation.</div>
+        <div class="row">
+          <input id="bottomCity" class="field grow" placeholder="Bottom Threat city">
+          <button id="resolveBtn" class="btn primary" type="button">Resolve</button>
+        </div>
+      </div>
+      <div id="status" class="status" aria-live="polite"></div>
+    </div>
+
+    <div class="card">
+      <div class="sectionHead">
+        <div>
+          <h2>Threat draws</h2>
+          <div class="sub"><span id="threatRateText"></span> cards per Threat stage</div>
+        </div>
+        <button id="skipThreatBtn" class="btn" type="button">Skip stage</button>
+      </div>
+      <div id="topNote" class="sub"></div>
+      <div id="cityChips" class="chips"></div>
+      <div id="manualThreat" class="row" style="margin-top:10px">
+        <input id="manualCity" class="field grow" placeholder="Threat city drawn">
+        <button id="manualCityBtn" class="btn" type="button">Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:8px">Odds for remaining shuffled top cards</h2>
+      <div id="oddsBox"></div>
+      <div id="oddsNote" class="tiny" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:8px">Since the last Escalation</h2>
+      <div style="font-size:14px;margin-bottom:8px"><b>Discard:</b> <span id="discardText"></span></div>
+      <div id="afterBox"></div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>Game state / corrections / funded-event tools</summary>
+        <div class="notice" style="margin-top:10px">
+          <div><b>Players:</b> <span id="playersText"></span></div>
+          <div><b>Current player:</b> <span id="currentPlayerText"></span></div>
+          <div><b>Player piles:</b> <span id="pilesText"></span></div>
+          <div><b>Player cards drawn:</b> <span id="drawnText"></span></div>
+          <div><b>Escalations drawn:</b> <span id="escText"></span></div>
+          <div><b>Threat rate:</b> <span id="rateText"></span></div>
+          <div><b>Removed Threat cards:</b> <span id="removedText"></span></div>
+        </div>
+
+        <details>
+          <summary>Correct Player-deck state</summary>
+          <div class="grid2" style="margin-top:9px">
+            <label>Cards drawn<input id="editDrawn" type="number" inputmode="numeric" min="0" class="field"></label>
+            <label>Escalations drawn<input id="editEsc" type="number" inputmode="numeric" min="0" max="5" class="field"></label>
+            <label>Current player<select id="editPlayer" class="field"></select></label>
+            <label>Threat rate<input id="editRate" type="number" inputmode="numeric" min="1" max="8" class="field"></label>
+          </div>
+          <label style="margin-top:8px">Player pile sizes
+            <input id="editPiles" class="field">
+          </label>
+          <button id="applyPlayerBtn" class="btn full" type="button" style="margin-top:9px">Apply correction</button>
+        </details>
+
+        <details>
+          <summary>Edit Threat-deck state</summary>
+          <label style="margin-top:9px">Current discard
+            <textarea id="editDiscard" class="field"></textarea>
+          </label>
+          <label style="margin-top:8px">Current shuffled top group still undrawn
+            <textarea id="editTop" class="field"></textarea>
+          </label>
+          <label style="margin-top:8px">Older tracked layers below it (one layer per line)
+            <textarea id="editOlderLayers" class="field"></textarea>
+          </label>
+          <button id="applyThreatBtn" class="btn full" type="button" style="margin-top:9px">Apply Threat edits</button>
+        </details>
+
+        <details>
+          <summary>Funded-event / special-effect tools</summary>
+          <div class="tiny" style="margin:8px 0">Generic effect controls only; no future card names are shown.</div>
+          <label>Remove one Threat card from the game
+            <div class="row" style="margin-top:5px">
+              <input id="removeCity" class="field grow" placeholder="City">
+              <select id="removeZone" class="field" style="width:auto">
+                <option value="discard">Discard</option>
+                <option value="top">Current top group</option>
+                <option value="any">Any tracked zone</option>
+              </select>
+            </div>
+          </label>
+          <button id="removeBtn" class="btn full" type="button" style="margin-top:8px">Remove 1 card</button>
+
+          <label style="margin-top:12px">Known / reordered upcoming Threat cards, next first
+            <textarea id="knownOrder" class="field"></textarea>
+          </label>
+          <div class="actions" style="margin-top:8px">
+            <button id="setKnownBtn" class="btn" type="button">Set order</button>
+            <button id="clearKnownBtn" class="btn" type="button">Clear order</button>
+          </div>
+        </details>
+
+        <details>
+          <summary>Backup / recovery</summary>
+          <div class="tiny" style="margin:8px 0">The tracker auto-saves after every action and keeps recent snapshots.</div>
+          <div class="actions">
+            <button id="downloadBackupBtn" class="btn" type="button">Download backup</button>
+            <button id="copyRecoveryBtn" class="btn" type="button">Copy recovery link</button>
+          </div>
+          <label style="margin-top:10px">Import backup JSON
+            <input id="importFile" class="field" type="file" accept="application/json,.json">
+          </label>
+          <label style="margin-top:10px">Restore recent autosave
+            <select id="snapshotSelect" class="field"></select>
+          </label>
+          <button id="restoreSnapshotBtn" class="btn full" type="button" style="margin-top:8px">Restore selected autosave</button>
+          <button id="newGameBtn" class="btn danger full" type="button" style="margin-top:12px">Start a new game from scratch</button>
+        </details>
+      </details>
+    </div>
+  </section>
+
+  <div class="tiny" style="text-align:center;padding:4px 8px 18px">
+    State is stored in this browser. Export a backup occasionally if you want a second copy.
+  </div>
+</main>
+
+<script>
+(() => {
+'use strict';
+
+const STATE_KEY='s0_tracker_state_v3';
+const SNAP_KEY='s0_tracker_snaps_v3';
+const MAX_SNAPS=30;
+let s=null, snaps=[];
+
+const $=id=>document.getElementById(id);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const uniq=a=>[...new Set(a)];
+const count=(a,v)=>a.reduce((n,x)=>n+(x===v?1:0),0);
+const rmOne=(a,v)=>{const i=a.indexOf(v);if(i<0)return false;a.splice(i,1);return true};
+const list=v=>String(v||'').split(/[,\n]+/).map(x=>x.trim()).filter(Boolean);
+const pct=x=>(100*Math.max(0,Math.min(1,x))).toFixed(1).replace('.0','')+'%';
+const esc=x=>String(x).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+function blankState(){
+  return {
+    schema:3, setupComplete:false,
+    players:['P1','P2','P3','P4'],
+    currentPlayer:0,
+    playerPiles:[1,1,1,1,1],
+    cardsDrawn:0,
+    escalationsDrawn:0,
+    playerDrawIndex:0,
+    phase:'player',
+    threatRate:2,
+    threatDrawIndex:0,
+    threatLayers:[],
+    discard:[],
+    knownOrder:[],
+    removed:[],
+    resumeAfterEscalation:null,
+    updatedAt:null
+  };
+}
+
+function valid(x){
+  return x&&typeof x==='object'&&Array.isArray(x.players)&&x.players.length===4&&Array.isArray(x.playerPiles)&&x.playerPiles.length===5&&Array.isArray(x.threatLayers)&&Array.isArray(x.discard)&&Array.isArray(x.knownOrder)&&Array.isArray(x.removed);
+}
+
+function migrate(x){
+  const b=blankState(), y=Object.assign(b,x||{});
+  y.schema=3;
+  y.players=(y.players||b.players).slice(0,4);
+  while(y.players.length<4)y.players.push('P'+(y.players.length+1));
+  y.playerPiles=(y.playerPiles||b.playerPiles).map(Number).slice(0,5);
+  while(y.playerPiles.length<5)y.playerPiles.push(1);
+  y.cardsDrawn=Math.max(0,Number(y.cardsDrawn||0));
+  y.escalationsDrawn=Math.max(0,Math.min(5,Number(y.escalationsDrawn||0)));
+  y.currentPlayer=Math.max(0,Math.min(3,Number(y.currentPlayer||0)));
+  y.playerDrawIndex=Math.max(0,Math.min(1,Number(y.playerDrawIndex||0)));
+  y.threatRate=Math.max(1,Math.min(8,Number(y.threatRate||2)));
+  y.threatDrawIndex=Math.max(0,Number(y.threatDrawIndex||0));
+  y.phase=['player','threat','resolveEscalation'].includes(y.phase)?y.phase:'player';
+  y.setupComplete=!!y.setupComplete;
+  return y;
+}
+
+function encode(obj){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decode(v){
+  v=v.replace(/-/g,'+').replace(/_/g,'/');
+  while(v.length%4)v+='=';
+  return JSON.parse(decodeURIComponent(escape(atob(v))));
+}
+function hashState(){
+  const m=location.hash.match(/^#state=(.+)$/);
+  if(!m)return null;
+  try{const x=migrate(decode(m[1]));return valid(x)?x:null}catch{return null}
+}
+function updateHash(){
+  if(!s||!s.setupComplete)return;
+  try{history.replaceState(null,'','#state='+encode(s))}catch{}
+}
+
+function load(){
+  try{
+    const fromHash=hashState();
+    const local=JSON.parse(localStorage.getItem(STATE_KEY)||'null');
+    s=fromHash||((valid(local))?migrate(local):blankState());
+  }catch{s=blankState()}
+  try{
+    const raw=JSON.parse(localStorage.getItem(SNAP_KEY)||'[]');
+    snaps=Array.isArray(raw)?raw.filter(x=>x&&valid(x.state)).slice(0,MAX_SNAPS):[];
+  }catch{snaps=[]}
+  persist(false);
+}
+
+function pushSnap(label){
+  if(!s||!s.setupComplete)return;
+  snaps.unshift({at:new Date().toISOString(),label,state:clone(s)});
+  snaps=snaps.slice(0,MAX_SNAPS);
+  try{localStorage.setItem(SNAP_KEY,JSON.stringify(snaps))}catch{}
+}
+function persist(redraw=true){
+  if(!s)return;
+  s.updatedAt=new Date().toISOString();
+  try{
+    localStorage.setItem(STATE_KEY,JSON.stringify(s));
+    $('savePill').textContent=s.setupComplete?'Saved '+new Date(s.updatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):'Not started';
+  }catch{$('savePill').textContent='Autosave unavailable'}
+  updateHash();
+  if(redraw)render();
+}
+function mutate(label,fn){pushSnap(label);fn();persist(true)}
+function msg(t){$('status').textContent=t||''}
+
+function startGame(){
+  const players=list($('setupPlayers').value);
+  const piles=[0,1,2,3,4].map(i=>Number($('pile'+i).value));
+  const current=Number($('setupNextPlayer').value)-1;
+  const rate=Number($('setupThreatRate').value);
+  const drawn=Number($('setupDrawn').value);
+  const escs=Number($('setupEsc').value);
+
+  if(players.length!==4){$('setupStatus').textContent='Enter exactly 4 player names.';return}
+  if(piles.some(x=>!Number.isInteger(x)||x<1)){$('setupStatus').textContent='Enter all 5 Player-deck pile sizes.';return}
+  if(!Number.isInteger(current)||current<0||current>3){$('setupStatus').textContent='Next player must be 1–4.';return}
+  if(!Number.isInteger(rate)||rate<1||rate>8){$('setupStatus').textContent='Threat rate must be 1–8.';return}
+
+  s={
+    schema:3,setupComplete:true,
+    players, currentPlayer:current, playerPiles:piles,
+    cardsDrawn:Math.max(0,drawn||0), escalationsDrawn:Math.max(0,Math.min(5,escs||0)),
+    playerDrawIndex:0, phase:'player',
+    threatRate:rate, threatDrawIndex:0,
+    threatLayers:list($('setupTop').value).length?[list($('setupTop').value)]:[],
+    discard:list($('setupDiscard').value),
+    knownOrder:list($('setupKnown').value),
+    removed:list($('setupRemoved').value),
+    resumeAfterEscalation:null, updatedAt:null
+  };
+
+  const p=playerPos();
+  if(!p.end&&!p.valid){
+    $('setupStatus').textContent='Those drawn-card and Escalation counts do not fit the five pile sizes.';
+    s=blankState();
+    return;
+  }
+  snaps=[];
+  try{localStorage.removeItem(SNAP_KEY)}catch{}
+  persist(true);
+}
+
+function total(){return s.playerPiles.reduce((a,b)=>a+b,0)}
+function playerPos(d=s.cardsDrawn,e=s.escalationsDrawn){
+  if(d>=total())return{end:true};
+  let start=0;
+  for(let i=0;i<5;i++){
+    const z=s.playerPiles[i];
+    if(d<start+z)return{pileIndex:i,remaining:start+z-d,resolved:e===i+1,valid:e===i||e===i+1};
+    start+=z;
+  }
+  return{end:true};
+}
+function oneRisk(d=s.cardsDrawn,e=s.escalationsDrawn){
+  const p=playerPos(d,e);
+  return !p||p.end||!p.valid||p.resolved?0:1/p.remaining;
+}
+function noEsc(n,d=s.cardsDrawn,e=s.escalationsDrawn){
+  let q=1;
+  for(let i=0;i<n;i++){
+    if(d>=total())return 0;
+    const p=oneRisk(d,e); q*=1-p;
+    if(p>=1)return 0;
+    d++;
+  }
+  return q;
+}
+function nextPlayerCards(){return s.phase==='player'?Math.max(0,2-s.playerDrawIndex):2}
+function turnRisk(){const n=nextPlayerCards();return n?1-noEsc(n):0}
+function earliest(){
+  for(let k=1,d=s.cardsDrawn;d<total();k++,d++)if(oneRisk(d,s.escalationsDrawn)>0)return k;
+  return null;
+}
+function playerForOffset(k){
+  if(s.phase!=='player')return s.players[(s.currentPlayer+1+Math.floor((k-1)/2))%4];
+  const left=Math.max(0,2-s.playerDrawIndex);
+  if(k<=left)return s.players[s.currentPlayer];
+  return s.players[(s.currentPlayer+1+Math.floor((k-left-1)/2))%4];
+}
+function cleanLayers(){while(s.threatLayers.length&&s.threatLayers[0].length===0)s.threatLayers.shift()}
+function topLayer(){cleanLayers();return s.threatLayers.length?s.threatLayers[0]:[]}
+function atLeastOne(N,K,m){
+  m=Math.min(m,N);
+  if(N<=0||K<=0||m<=0)return 0;
+  if(K>=N||m>N-K)return 1;
+  let z=1;for(let i=0;i<m;i++)z*=(N-K-i)/(N-i);
+  return 1-z;
+}
+
+function normalCard(){
+  if(s.phase!=='player')return;
+  if(oneRisk()>=.999999){msg('The next Player card must be this pile’s Escalation.');return}
+  mutate('Normal Player card',()=>{
+    s.cardsDrawn++;s.playerDrawIndex++;
+    if(s.playerDrawIndex>=2){s.playerDrawIndex=0;s.phase='threat';s.threatDrawIndex=0}
+  });
+}
+function escalationCard(){
+  if(s.phase!=='player')return;
+  if(oneRisk()<=0){msg('An Escalation cannot be in this Player-deck position.');return}
+  mutate('Escalation card',()=>{
+    s.cardsDrawn++;s.escalationsDrawn++;s.playerDrawIndex++;
+    s.resumeAfterEscalation=s.playerDrawIndex>=2?'threat':'player';
+    if(s.playerDrawIndex>=2)s.playerDrawIndex=0;
+    s.phase='resolveEscalation';
+  });
+}
+function resolveEsc(){
+  const city=$('bottomCity').value.trim();
+  if(!city){msg('Enter the bottom Threat city first.');return}
+  if(s.removed.includes(city)){msg(city+' is marked removed from the Threat deck.');return}
+  mutate('Resolve Escalation',()=>{
+    s.discard.push(city);
+    s.threatLayers.unshift(s.discard.slice());
+    s.discard=[];s.knownOrder=[];
+    s.phase=s.resumeAfterEscalation||'player';
+    s.resumeAfterEscalation=null;
+    if(s.phase==='threat')s.threatDrawIndex=0;
+    $('bottomCity').value='';
+  });
+}
+function threat(city){
+  if(s.phase!=='threat')return;
+  city=String(city||'').trim();if(!city)return;
+  const layer=topLayer();
+  if(s.removed.includes(city)){msg(city+' is marked removed from the Threat deck.');return}
+  if(s.knownOrder.length&&city!==s.knownOrder[0]){msg('Known next Threat card is '+s.knownOrder[0]+'.');return}
+  if(!s.knownOrder.length&&layer.length&&!layer.includes(city)){msg('That city is not in the tracked top group.');return}
+  mutate('Threat draw: '+city,()=>{
+    if(layer.length)rmOne(layer,city);
+    if(s.knownOrder[0]===city)s.knownOrder.shift();
+    s.discard.push(city);s.threatDrawIndex++;
+    if(s.threatDrawIndex>=s.threatRate){
+      s.threatDrawIndex=0;s.phase='player';s.currentPlayer=(s.currentPlayer+1)%4;
+    }
+    cleanLayers();
+  });
+}
+function skipThreat(){
+  if(s.phase!=='threat'){msg('The Threat stage is not active.');return}
+  mutate('Skip Threat stage',()=>{s.threatDrawIndex=0;s.phase='player';s.currentPlayer=(s.currentPlayer+1)%4});
+}
+
+function currentOdds(){
+  const layer=topLayer().slice();
+  const draws=s.phase==='threat'?Math.max(0,s.threatRate-s.threatDrawIndex):s.threatRate;
+  if(!layer.length&&!s.knownOrder.length)return[];
+  const fixed=s.knownOrder.slice(0,draws), pool=layer.slice();
+  s.knownOrder.forEach(c=>rmOne(pool,c));
+  const random=Math.max(0,draws-fixed.length);
+  return uniq([...s.knownOrder,...layer]).map(city=>{
+    const next=s.knownOrder.length?(s.knownOrder[0]===city?1:0):(layer.length?count(layer,city)/layer.length:0);
+    const within=fixed.includes(city)?1:atLeastOne(pool.length,count(pool,city),random);
+    return{city,next,within,copies:count(layer,city)};
+  }).sort((a,b)=>b.next-a.next||b.within-a.within||a.city.localeCompare(b.city));
+}
+function afterOdds(){
+  if(!s.discard.length)return[];
+  const N=s.discard.length+1,m=Math.min(s.threatRate,N);
+  return uniq(s.discard).map(city=>{
+    const k=count(s.discard,city);
+    return{city,copies:k,next:k/N,within:atLeastOne(N,k,m)};
+  });
+}
+
+function applyPlayer(){
+  const piles=list($('editPiles').value).map(Number);
+  if(piles.length!==5||piles.some(x=>!Number.isInteger(x)||x<1)){msg('Enter exactly five positive pile sizes.');return}
+  mutate('Correct Player deck',()=>{
+    s.cardsDrawn=Math.max(0,Number($('editDrawn').value||0));
+    s.escalationsDrawn=Math.max(0,Math.min(5,Number($('editEsc').value||0)));
+    s.currentPlayer=Math.max(0,s.players.indexOf($('editPlayer').value));
+    s.threatRate=Math.max(1,Math.min(8,Number($('editRate').value||2)));
+    s.playerPiles=piles;s.playerDrawIndex=0;s.threatDrawIndex=0;s.phase='player';s.resumeAfterEscalation=null;
+  });
+}
+function applyThreat(){
+  const top=list($('editTop').value);
+  const older=$('editOlderLayers').value.trim()?$('editOlderLayers').value.split(/\n+/).map(line=>list(line)).filter(a=>a.length):[];
+  mutate('Correct Threat deck',()=>{
+    s.discard=list($('editDiscard').value);
+    s.threatLayers=[top,...older].filter(a=>a.length);
+    s.knownOrder=[];
+  });
+}
+function removeCard(){
+  const city=$('removeCity').value.trim(),zone=$('removeZone').value;if(!city)return;
+  let found=false;
+  pushSnap('Remove Threat card: '+city);
+  if(zone==='discard'||zone==='any')found=rmOne(s.discard,city);
+  if(!found&&(zone==='top'||zone==='any')){
+    for(const layer of s.threatLayers){if(rmOne(layer,city)){found=true;break}}
+    if(found)rmOne(s.knownOrder,city);
+  }
+  if(!found){
+    const snap=snaps.shift();if(snap)s=migrate(clone(snap.state));
+    try{localStorage.setItem(SNAP_KEY,JSON.stringify(snaps))}catch{}
+    msg('That card was not found in the selected tracked zone.');render();return;
+  }
+  s.removed.push(city);$('removeCity').value='';persist(true);
+}
+function setKnown(){
+  const order=list($('knownOrder').value);if(!order.length)return;
+  const pool=topLayer().slice();
+  if(pool.length){
+    for(const c of order)if(!rmOne(pool,c)){msg(c+' is not available in the current tracked top group.');return}
+  }
+  mutate('Set known Threat order',()=>s.knownOrder=order);
+}
+function clearKnown(){if(s.knownOrder.length)mutate('Clear known Threat order',()=>s.knownOrder=[])}
+
+function undo(){
+  if(!snaps.length)return;
+  const snap=snaps.shift();s=migrate(clone(snap.state));
+  try{localStorage.setItem(SNAP_KEY,JSON.stringify(snaps))}catch{}
+  persist(true);msg('Undone.');
+}
+function downloadBackup(){
+  const payload={app:'Season 0 Tracker',version:3,exportedAt:new Date().toISOString(),state:s};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='season0-tracker-backup.json';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function copyRecovery(){
+  updateHash();const u=location.href;
+  try{await navigator.clipboard.writeText(u);msg('Recovery link copied.')}catch{window.prompt('Copy this recovery link:',u)}
+}
+function importFile(file,fromSetup=false){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const x=JSON.parse(rd.result),cand=migrate(x.state||x);
+      if(!valid(cand)||!cand.setupComplete)throw new Error();
+      if(s&&s.setupComplete)pushSnap('Before backup import');
+      s=cand;persist(true);if(!fromSetup)msg('Backup imported.');
+    }catch{
+      if(fromSetup)$('setupStatus').textContent='That file is not a valid tracker backup.';
+      else msg('That file is not a valid tracker backup.');
+    }
+  };
+  rd.readAsText(file);
+}
+function restoreSnapshot(){
+  const i=Number($('snapshotSelect').value);if(!Number.isInteger(i)||i<0||i>=snaps.length)return;
+  pushSnap('Before restoring older autosave');
+  s=migrate(clone(snaps[i].state));persist(true);msg('Autosave restored.');
+}
+function newGame(){
+  if(!confirm('Start a new game from scratch? Your current game remains in the recent autosave history until you clear browser data.'))return;
+  pushSnap('Before starting new game');
+  s=blankState();persist(true);
+  history.replaceState(null,'',location.pathname+location.search);
+}
+
+function snapshotOptions(){
+  if(!snaps.length){$('snapshotSelect').innerHTML='<option>No older autosaves yet</option>';$('restoreSnapshotBtn').disabled=true;return}
+  $('snapshotSelect').innerHTML=snaps.map((x,i)=>{
+    let t='';try{t=new Date(x.at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch{}
+    return '<option value="'+i+'">'+esc(t+' — '+(x.label||'Autosave'))+'</option>';
+  }).join('');
+  $('restoreSnapshotBtn').disabled=false;
+}
+
+function render(){
+  const setup=!s.setupComplete;
+  $('setupView').classList.toggle('hidden',!setup);
+  $('gameView').classList.toggle('hidden',setup);
+  $('savePill').textContent=setup?'Not started':(s.updatedAt?'Saved '+new Date(s.updatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):'Autosave on');
+  if(setup)return;
+
+  cleanLayers();
+  const p=playerPos(),r=turnRisk(),e=earliest();
+  const relevant=s.phase==='player'?s.players[s.currentPlayer]:s.players[(s.currentPlayer+1)%4];
+
+  $('riskLabel').textContent='Escalation during '+relevant+"'s "+nextPlayerCards()+'-card draw';
+  $('riskValue').textContent=pct(r);
+  $('riskFoot').textContent=s.phase==='player'?'current draw: '+s.players[s.currentPlayer]:'next Player draw: '+relevant;
+  $('soonValue').textContent=e?(e+' card'+(e===1?'':'s')):'none';
+  $('soonFoot').textContent=e?'could hit '+playerForOffset(e):'No Escalations remain';
+
+  if(s.phase==='resolveEscalation')$('turnTitle').textContent='Resolving Escalation';
+  else if(s.phase==='threat')$('turnTitle').textContent=s.players[s.currentPlayer]+' — Threat draw '+(s.threatDrawIndex+1)+' of '+s.threatRate;
+  else $('turnTitle').textContent=s.players[s.currentPlayer]+' — Player draw '+(s.playerDrawIndex+1)+' of 2';
+
+  $('pileLine').textContent=p.end?'Player deck exhausted.':'Pile '+(p.pileIndex+1)+' • '+p.remaining+' cards remaining • '+(p.valid?(p.resolved?'Escalation already passed':'Escalation still hidden'):'⚠ state mismatch');
+  $('normalBtn').disabled=s.phase!=='player';
+  $('escalationBtn').disabled=s.phase!=='player';
+  $('resolveBox').classList.toggle('hidden',s.phase!=='resolveEscalation');
+  $('skipThreatBtn').disabled=s.phase!=='threat';
+  $('undoBtn').disabled=!snaps.length;
+  $('threatRateText').textContent=s.threatRate;
+
+  const layer=topLayer(),known=s.knownOrder[0];
+  if(known){
+    $('topNote').innerHTML='Exact next Threat card: <b>'+esc(known)+'</b>';
+    $('cityChips').innerHTML='<button type="button" class="chip" data-city="'+esc(known)+'">Draw '+esc(known)+'</button>';
+    $('manualThreat').classList.add('hidden');
+  }else if(layer.length){
+    $('topNote').textContent=layer.length+' tracked cards remain in the current shuffled top group.';
+    $('cityChips').innerHTML=uniq(layer).map(c=>'<button type="button" class="chip" data-city="'+esc(c)+'">'+esc(c)+' · '+pct(count(layer,c)/layer.length)+'</button>').join('');
+    $('manualThreat').classList.add('hidden');
+  }else{
+    $('topNote').textContent='No exact top-group information is currently tracked.';
+    $('cityChips').innerHTML='';
+    $('manualThreat').classList.toggle('hidden',s.phase!=='threat');
+  }
+  document.querySelectorAll('#cityChips .chip').forEach(b=>{b.disabled=s.phase!=='threat';b.addEventListener('click',()=>threat(b.dataset.city))});
+
+  const o=currentOdds(),draws=s.phase==='threat'?Math.max(0,s.threatRate-s.threatDrawIndex):s.threatRate;
+  $('oddsBox').innerHTML=o.length?'<table class="table">'+o.map(x=>'<tr><td>'+esc(x.city)+(x.copies>1?' ×'+x.copies:'')+'</td><td><b>'+pct(x.next)+'</b> next</td><td>'+pct(x.within)+' within '+draws+'</td></tr>').join('')+'</table>':'<div class="sub">No exact current top-group odds available.</div>';
+  $('oddsNote').textContent=o.length?(s.knownOrder.length?'Exact known order is applied first; remaining cards use shuffled-group odds.':'Duplicates are handled correctly.'):'After an Escalation, the tracker can calculate the shuffled top group exactly.';
+
+  $('discardText').textContent=s.discard.length?s.discard.join(', '):'none';
+  const a=afterOdds();
+  $('afterBox').innerHTML=a.length?'<table class="table">'+a.map(x=>'<tr><td>'+esc(x.city)+(x.copies>1?' ×'+x.copies:'')+'</td><td>≥ <b>'+pct(x.next)+'</b> next</td><td>≥ '+pct(x.within)+'/'+s.threatRate+'</td></tr>').join('')+'</table><div class="tiny" style="margin-top:8px">Lower bounds because the next Escalation also adds one unknown bottom Threat card before shuffling.</div>':'<div class="sub">No cards in the current discard.</div>';
+
+  $('playersText').textContent=s.players.join(' → ');
+  $('currentPlayerText').textContent=s.players[s.currentPlayer];
+  $('pilesText').textContent=s.playerPiles.join(' / ');
+  $('drawnText').textContent=s.cardsDrawn;
+  $('escText').textContent=s.escalationsDrawn;
+  $('rateText').textContent=s.threatRate;
+  $('removedText').textContent=s.removed.length?s.removed.join(', '):'none';
+
+  $('editDrawn').value=s.cardsDrawn;$('editEsc').value=s.escalationsDrawn;$('editRate').value=s.threatRate;$('editPiles').value=s.playerPiles.join(', ');
+  $('editPlayer').innerHTML=s.players.map(n=>'<option'+(n===s.players[s.currentPlayer]?' selected':'')+'>'+esc(n)+'</option>').join('');
+  $('editDiscard').value=s.discard.join(', ');$('editTop').value=topLayer().join(', ');$('editOlderLayers').value=s.threatLayers.slice(1).map(x=>x.join(', ')).join('\n');$('knownOrder').value=s.knownOrder.join(', ');
+  snapshotOptions();
+}
+
+$('startBtn').addEventListener('click',startGame);
+$('normalBtn').addEventListener('click',normalCard);
+$('escalationBtn').addEventListener('click',escalationCard);
+$('resolveBtn').addEventListener('click',resolveEsc);
+$('manualCityBtn').addEventListener('click',()=>{threat($('manualCity').value);$('manualCity').value=''});
+$('skipThreatBtn').addEventListener('click',skipThreat);
+$('undoBtn').addEventListener('click',undo);
+$('applyPlayerBtn').addEventListener('click',applyPlayer);
+$('applyThreatBtn').addEventListener('click',applyThreat);
+$('removeBtn').addEventListener('click',removeCard);
+$('setKnownBtn').addEventListener('click',setKnown);
+$('clearKnownBtn').addEventListener('click',clearKnown);
+$('downloadBackupBtn').addEventListener('click',downloadBackup);
+$('copyRecoveryBtn').addEventListener('click',copyRecovery);
+$('restoreSnapshotBtn').addEventListener('click',restoreSnapshot);
+$('newGameBtn').addEventListener('click',newGame);
+$('importFile').addEventListener('change',e=>{if(e.target.files&&e.target.files[0])importFile(e.target.files[0],false);e.target.value=''});
+$('setupImport').addEventListener('change',e=>{if(e.target.files&&e.target.files[0])importFile(e.target.files[0],true);e.target.value=''});
+
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')persist(false)});
+window.addEventListener('pagehide',()=>persist(false));
+
+load();render();
+
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+})();
+</script>
+</body>
+</html>
