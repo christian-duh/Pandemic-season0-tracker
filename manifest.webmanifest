@@ -1,7 +1,7 @@
 {
-  "name": "Pandemic Legacy Season 0 \u2014 August-Safe Field Tracker v6",
+  "name": "Pandemic Legacy Season 0 \u2014 All-Month Field Tracker v7",
   "short_name": "S0 Field Tracker",
-  "start_url": "./",
+  "start_url": "./?app=v7",
   "scope": "./",
   "display": "standalone",
   "background_color": "#071014",
